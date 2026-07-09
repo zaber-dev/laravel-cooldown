@@ -4,10 +4,11 @@
 
 # Laravel Cooldown
 
-[![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](https://github.com/zaber-dev/laravel-cooldown)
-[![PHP Version](https://img.shields.io/badge/PHP-%3E%3E%3D%208.2-8892BF.svg)](https://php.net/)
-[![Laravel Version](https://img.shields.io/badge/Laravel-11%20%7C%2012%20%7C%2013%2B-FF2D20.svg)](https://laravel.com/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/zaber-dev/laravel-cooldown.svg?style=flat-square)](https://packagist.org/packages/zaber-dev/laravel-cooldown)
+[![Run Tests](https://img.shields.io/github/actions/workflow/status/zaber-dev/laravel-cooldown/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/zaber-dev/laravel-cooldown/actions/workflows/run-tests.yml)
+[![Total Downloads](https://img.shields.io/packagist/dt/zaber-dev/laravel-cooldown.svg?style=flat-square)](https://packagist.org/packages/zaber-dev/laravel-cooldown)
+[![PHP Version Require](https://img.shields.io/packagist/dependency-v/zaber-dev/laravel-cooldown/php.svg?style=flat-square)](https://packagist.org/packages/zaber-dev/laravel-cooldown)
+[![License](https://img.shields.io/packagist/l/zaber-dev/laravel-cooldown.svg?style=flat-square)](https://packagist.org/packages/zaber-dev/laravel-cooldown)
 
 **Supports:** Laravel 11, 12 & 13+ • PHP 8.2+ • Redis • Memcached • Database
 
@@ -330,11 +331,20 @@ You can listen to these in your `EventServiceProvider` for logging, monitoring, 
 
 ## Testing & Quality
 
-Run the comprehensive PHPUnit test suite:
+Run the comprehensive PHPUnit test suite locally:
 
 ```bash
 composer test
 ```
+
+### Automated CI Matrix (`run-tests.yml`)
+Every commit and pull request is automatically tested across multiple PHP and Laravel environments via GitHub Actions (`.github/workflows/run-tests.yml`):
+- **PHP Versions**: `8.2`, `8.3`, `8.4`
+- **Laravel Versions**: `11.*`, `12.*`, `13.*`
+- **Stability**: `prefer-stable` & `prefer-lowest`
+
+### Automated Packagist Synchronization (`update-packagist.yml`)
+When publishing releases (`v*`) or pushing to `main`, our GitHub Action automatically hooks into Packagist (`https://packagist.org/packages/zaber-dev/laravel-cooldown`) to ensure immediate release synchronization.
 
 ---
 
