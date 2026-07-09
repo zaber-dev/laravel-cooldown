@@ -1,0 +1,10 @@
+/vendor/
+/node_modules/
+/composer.lock
+/phpunit.xml
+/.phpunit.cache/
+/.coverage/
+/.phpstorm.meta.php
+/_ide_helper.php
+/laravel-cooldown-master/
+*.log

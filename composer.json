@@ -1,0 +1,65 @@
+{
+    "name": "zaber-dev/laravel-cooldown",
+    "description": "A powerful, modern, and driver-based cooldown management package for Laravel 13+ with rich Eloquent models, high-performance caching, and intuitive developer ergonomics.",
+    "keywords": [
+        "laravel",
+        "cooldown",
+        "cooldowns",
+        "rate-limit",
+        "throttling",
+        "eloquent",
+        "cache"
+    ],
+    "homepage": "https://github.com/zaber-dev/laravel-cooldown",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Md Mahedi Zaman Zaber",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/cache": "^11.0|^12.0|^13.0",
+        "illuminate/contracts": "^11.0|^12.0|^13.0",
+        "illuminate/database": "^11.0|^12.0|^13.0",
+        "illuminate/support": "^11.0|^12.0|^13.0"
+    },
+    "require-dev": {
+        "mockery/mockery": "^1.6",
+        "orchestra/testbench": "^9.0|^10.0|^11.0",
+        "phpunit/phpunit": "^10.5|^11.0|^12.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "ZaberDev\\Cooldown\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "ZaberDev\\Cooldown\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "test-coverage": "vendor/bin/phpunit --coverage-html coverage"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "ZaberDev\\Cooldown\\CooldownServiceProvider"
+            ],
+            "aliases": {
+                "Cooldown": "ZaberDev\\Cooldown\\Facades\\Cooldown"
+            }
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
