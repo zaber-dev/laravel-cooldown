@@ -10,6 +10,8 @@ use ZaberDev\Cooldown\CooldownServiceProvider;
 
 class TestCase extends OrchestraTestCase
 {
+    public static $latestResponse = null;
+
     protected function setUp(): void
     {
         parent::setUp();
