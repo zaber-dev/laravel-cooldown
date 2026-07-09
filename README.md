@@ -9,35 +9,74 @@
 [![Laravel Version](https://img.shields.io/badge/Laravel-11%20%7C%2012%20%7C%2013%2B-FF2D20.svg)](https://laravel.com/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
 
-A powerful, modern, and driver-based cooldown management package for **Laravel 13+** with rich Eloquent models, high-performance caching, and intuitive developer ergonomics.
+**Supports:** Laravel 11, 12 & 13+ • PHP 8.2+ • Redis • Memcached • Database
 
-Designed from the ground up for clean abstractions, strict typing, and zero bloatware, **Laravel Cooldown** lets you effortlessly manage rate limits, action delays, and temporal constraints across arbitrary targets (Users, API Tokens, IP addresses, or system workflows).
+Laravel Cooldown is a driver-based cooldown management package for Laravel that helps you enforce time-based restrictions on actions, workflows, and endpoints.
+
+Manage cooldowns using cache or database storage, attach them directly to Eloquent models, protect routes with middleware, and extend the package with custom storage drivers—all through a clean, expressive API.
+
+> Unlike Laravel's built-in `RateLimiter`, Laravel Cooldown is designed for persistent, entity-scoped action cooldowns and workflow delays with interchangeable cache and database storage.
+
+---
+
+
+## Quick Example
+
+```php
+Cooldown::for('password_reset', $user)
+    ->enforce()
+    ->for(300);
+```
+---
+
+## Documentation
+
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Usage Guide](#usage-guide)
+- [LEARN.md](LEARN.md)
 
 ---
 
 ## Features
 
-- **Driver-Based Architecture**: Switch seamlessly between high-performance `cache` stores (Redis, Memcached, Array) and persistent `database` storage with automatic cleanup.
-- **Fluent & Intuitive API**: Chain expressive calls like `Cooldown::for('send_email', $user)->using('database')->for(300)` or enforce limits with `enforce()`.
-- **First-Class Eloquent Integration**: Attach the `HasCooldowns` trait to any model for scoped action tracking (`$user->cooldown('password_reset')->active()`).
+- **Multiple Storage Drivers** (Cache & Database): Switch seamlessly between high-performance `cache` stores (Redis, Memcached, Array) and persistent `database` storage with automatic cleanup.
+- **Expressive Fluent API**: Chain expressive calls like `Cooldown::for('send_email', $user)->using('database')->for(300)` or enforce limits with `enforce()`.
+- **Native Eloquent Integration**: Attach the `HasCooldowns` trait to any model for scoped action tracking (`$user->cooldown('password_reset')->active()`).
 - **Route & Endpoint Middleware**: Protect endpoints automatically using `cooldown:action_name,duration_in_seconds` with automatic HTTP `429` enforcement and `Retry-After` headers.
 - **Immutable DTOs**: Work safely with strict `CooldownInfo` Data Transfer Objects returning precision durations (`remainingSeconds()`, `remainingForHumans()`).
 - **Prunable Database Storage**: Built-in `Prunable` trait integration ensures expired database records never clutter your database.
 - **Custom Driver Extensibility**: Register custom storage drivers on the fly with closure-based creators via `Cooldown::extend()`.
 
 ---
+## Common Use Cases
 
-## Why Laravel Cooldown? (Feature Comparison)
+Laravel Cooldown is ideal for:
+
+- Password reset requests
+- Email verification
+- SMS / OTP sending
+- AI prompt generation
+- Report exports
+- Payment retries
+- Promotional rewards
+- API actions
+- Spam protection
+- User workflows
+
+---
+
+## Why Laravel Cooldown?
 
 While Laravel includes a built-in `RateLimiter` designed primarily for request throttling (e.g., "60 requests per minute"), **Laravel Cooldown** is engineered for temporal action constraints, workflow delays, and entity-scoped cooldowns across multiple storage backends.
 
 | Feature | Laravel RateLimiter | Custom Cache Checks | Laravel Cooldown |
 | :--- | :---: | :---: | :---: |
-| **Driver-Based Architecture** (`cache` & `database`) | ❌ Cache Only | ❌ Manual | ✅ **Both Supported** |
-| **First-Class Eloquent Integration** (`$user->cooldown()`) | ❌ | ❌ | ✅ **Native (`HasCooldowns`)** |
-| **Temporal / Time-Based Delays & Constraints** | ⚠️ Limited | ❌ Manual | ✅ **Subsecond Precision** |
-| **Success-Only Middleware Triggering** | ❌ (Triggers on 4xx/5xx) | ❌ | ✅ **Only on 2xx / 3xx** |
 | **Fluent Builder API** (`Cooldown::for()->until()`) | ❌ | ❌ | ✅ **Expressive & Clean** |
+| **First-Class Eloquent Integration** (`$user->cooldown()`) | ❌ | ❌ | ✅ **Native (`HasCooldowns`)** |
+| **Driver-Based Architecture** (`cache` & `database`) | ❌ Cache Only | ❌ Manual | ✅ **Both Supported** |
+| **Success-Only Middleware Triggering** | ❌ (Triggers on 4xx/5xx) | ❌ | ✅ **Only on 2xx / 3xx** |
+| **Temporal / Time-Based Delays & Constraints** | ⚠️ Limited | ❌ Manual | ✅ **Subsecond Precision** |
 | **Immutable DTOs (`CooldownInfo`)** | ❌ | ❌ | ✅ **Strict (`CarbonImmutable`)** |
 | **Automatic Database Pruning** (`model:prune`) | N/A | ❌ Manual SQL | ✅ **Built-in (`Prunable`)** |
 | **Polymorphic Target Scoping** (Models, Scalars, IPs) | ❌ Manual Keys | ❌ Manual Keys | ✅ **Automatic Key Mapping** |
@@ -48,7 +87,7 @@ While Laravel includes a built-in `RateLimiter` designed primarily for request t
 
 ## Installation
 
-Install the package via Composer:
+Ready to get started? Install the package with Composer:
 
 ```bash
 composer require zaber-dev/laravel-cooldown

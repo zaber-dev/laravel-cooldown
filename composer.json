@@ -1,14 +1,19 @@
 {
     "name": "zaber-dev/laravel-cooldown",
-    "description": "A powerful, modern, and driver-based cooldown management package for Laravel 13+ with rich Eloquent models, high-performance caching, and intuitive developer ergonomics.",
+    "description": "Driver-based cooldown management for Laravel with cache and database drivers, Eloquent integration, middleware, and a fluent API.",
     "keywords": [
         "laravel",
+        "laravel-package",
         "cooldown",
-        "cooldowns",
         "rate-limit",
+        "rate-limiting",
+        "throttle",
         "throttling",
+        "middleware",
         "eloquent",
-        "cache"
+        "cache",
+        "database",
+        "redis"
     ],
     "homepage": "https://github.com/zaber-dev/laravel-cooldown",
     "license": "MIT",
