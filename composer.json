@@ -63,6 +63,11 @@
             "aliases": {
                 "Cooldown": "ZaberDev\\Cooldown\\Facades\\Cooldown"
             }
+        },
+        "boost": {
+            "skills": [
+                "resources/boost/skills/laravel-cooldown"
+            ]
         }
     },
     "minimum-stability": "dev",

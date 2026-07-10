@@ -43,22 +43,11 @@ Cooldown::for('password_reset', $user)->for(300);
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Usage Guide](#usage-guide)
+- [Agentic Development with Laravel Boost](#agentic-development-with-laravel-boost)
 - [LEARN.md](LEARN.md)
 
 ---
 
-## Features
-
-- **Multiple Storage Drivers** (Cache & Database): Switch seamlessly between high-performance `cache` stores (Redis, Memcached, Array) and persistent `database` storage with automatic cleanup.
-- **Expressive Fluent API**: Chain expressive calls like `Cooldown::for('send_email', $user)->using('database')->for(300)` or enforce limits with `enforce()`.
-- **Atomic In-Flight Locking**: Prevent concurrent double-clicks and race conditions using `block()` or the built-in middleware.
-- **Native Eloquent Integration**: Attach the `HasCooldowns` trait to any model for scoped action tracking (`$user->cooldown('password_reset')->active()`).
-- **Route Middleware**: Protect endpoints automatically using `cooldown:action_name,duration_in_seconds` with automatic HTTP `429` enforcement and `Retry-After` headers.
-- **Immutable DTOs**: Work safely with strict `CooldownInfo` Data Transfer Objects returning precision durations (`remainingSeconds()`, `remainingForHumans()`).
-- **Prunable Database Storage**: Built-in `Prunable` trait integration ensures expired database records never clutter your database.
-- **Custom Driver Extensibility**: Register custom storage drivers on the fly with closure-based creators via `Cooldown::extend()`.
-
----
 ## Common Use Cases
 
 Laravel Cooldown is ideal for:
@@ -73,6 +62,19 @@ Laravel Cooldown is ideal for:
 - API actions
 - Spam protection
 - User workflows
+
+---
+
+## Features
+
+- **Multiple Storage Drivers** (Cache & Database): Switch seamlessly between high-performance `cache` stores (Redis, Memcached, Array) and persistent `database` storage with automatic cleanup.
+- **Expressive Fluent API**: Chain expressive calls like `Cooldown::for('send_email', $user)->using('database')->for(300)` or enforce limits with `enforce()`.
+- **Atomic In-Flight Locking**: Prevent concurrent double-clicks and race conditions using `block()` or the built-in middleware.
+- **Native Eloquent Integration**: Attach the `HasCooldowns` trait to any model for scoped action tracking (`$user->cooldown('password_reset')->active()`).
+- **Route Middleware**: Protect endpoints automatically using `cooldown:action_name,duration_in_seconds` with automatic HTTP `429` enforcement and `Retry-After` headers.
+- **Immutable DTOs**: Work safely with strict `CooldownInfo` Data Transfer Objects returning precision durations (`remainingSeconds()`, `remainingForHumans()`).
+- **Prunable Database Storage**: Built-in `Prunable` trait integration ensures expired database records never clutter your database.
+- **Custom Driver Extensibility**: Register custom storage drivers on the fly with closure-based creators via `Cooldown::extend()`.
 
 ---
 
@@ -364,6 +366,46 @@ You can listen to these in your `EventServiceProvider` for logging, monitoring, 
 
 ---
 
+## Agentic Development with Laravel Boost
+
+**Laravel Cooldown** includes built-in AI support and architectural skills engineered for [Laravel Boost](https://github.com/laravel/boost).
+
+When using AI coding assistants (such as Cursor, Claude Code, or GitHub Copilot connected via the Boost MCP server), your AI agent can automatically load specialized design patterns and exact API rules for implementing rate limits and entity-scoped action cooldowns with our package.
+
+### Automatic Skill Installation
+When Laravel Boost (`laravel/boost`) is installed in your application, our package AI skill is **automatically discovered and published** during package installation and updates (`php artisan boost:install` or `php artisan boost:update`).
+
+If you install `laravel-cooldown` into an existing Boost-enabled project, our service provider also automatically synchronizes the skill directly into your `.ai/skills/laravel-cooldown` directory on boot with zero configuration needed.
+
+### Manual Skill Installation
+If you prefer to install or update the AI skill manually, you can use any of the following commands:
+
+```bash
+# Using Laravel Boost
+php artisan boost:add-skill zaber-dev/laravel-cooldown
+
+# Using Vendor Publish
+php artisan vendor:publish --tag=cooldowns-skill
+```
+
+### What the AI Skill Teaches Your Assistant
+By enabling our skill, your AI assistant will strictly follow package conventions, including:
+- Utilizing `Cooldown::for('action', $target)->block(...)` for atomic in-flight execution and double-click race condition protection.
+- Applying `use ZaberDev\Cooldown\HasCooldowns;` directly to Eloquent models (`$user->cooldown('send_sms')->for('5 minutes')`).
+- Selecting the proper storage driver (`cache` for high-throughput transient limits vs `database` for auditability and server-restart persistence).
+- Enforcing route middleware (`middleware('cooldown:action,duration')`) that respects controller validation failures cleanly.
+- Handling `CooldownActiveException` (`HTTP 429`) and `Retry-After` headers idiomatically.
+
+---
+
+## Related Packages
+
+This package is part of the **[ZaberDev Laravel Ecosystem](https://github.com/zaber-dev/laravel-ecosystem)** (Laravel Productivity Toolkit) — a cohesive suite of high-level application primitives engineered for concurrency, state management, and resource allocation.
+
+Explore the complete directory of packages, detailed use cases, and documentation in our **[Ecosystem Index Hub](https://github.com/zaber-dev/laravel-ecosystem/blob/main/PACKAGES.md)**.
+
+---
+
 ## Testing & Quality
 
 Run the comprehensive PHPUnit test suite locally:
@@ -371,15 +413,6 @@ Run the comprehensive PHPUnit test suite locally:
 ```bash
 composer test
 ```
-
-### Automated CI Matrix (`run-tests.yml`)
-Every commit and pull request is automatically tested across multiple PHP and Laravel environments via GitHub Actions (`.github/workflows/run-tests.yml`):
-- **PHP Versions**: `8.2`, `8.3`, `8.4`
-- **Laravel Versions**: `11.*`, `12.*`, `13.*`
-- **Stability**: `prefer-stable` & `prefer-lowest`
-
-### Automated Packagist Synchronization (`update-packagist.yml`)
-When publishing releases (`v*`) or pushing to `main`, our GitHub Action automatically hooks into Packagist (`https://packagist.org/packages/zaber-dev/laravel-cooldown`) to ensure immediate release synchronization.
 
 ---
 
@@ -392,3 +425,9 @@ Thank you for considering contributing! Please ensure any pull requests include 
 ## License
 
 The MIT License (MIT). Please see [LICENSE.md](LICENSE.md) for more information.
+
+---
+
+<p align="center">
+    <b>Built with ❤️ as part of the ZaberDev Laravel Ecosystem.</b>
+</p>

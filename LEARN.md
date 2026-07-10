@@ -1,4 +1,4 @@
-# Learn: Building Modern, Driver-Based Packages in Laravel 13+
+# Learn: Building Time-Based Action Cooldowns in Laravel
 
 Welcome to the architectural learning guide for **Laravel Cooldown** (`zaber-dev/laravel-cooldown`). Whether you are evaluating this package for your enterprise application or studying modern Laravel package engineering for GitHub Community Exchange, this document provides a deep dive into the design patterns, abstractions, and developer ergonomics behind the project.
 
@@ -171,10 +171,23 @@ This allows developers to run `php artisan model:prune` or schedule it via `Sche
 
 ---
 
+## 8. Agent-Aware Architecture (Laravel Boost Skills)
+
+With the rise of AI-assisted engineering and [Laravel Boost](https://github.com/laravel/boost), modern Laravel packages are no longer consumed solely by human engineers—they are actively queried, integrated, and refactored by autonomous AI agents (Cursor, Claude Code, Copilot).
+
+To ensure high-precision code generation and eliminate hallucinations, `laravel-cooldown` implements an **Agent-Aware Architecture**:
+1. **Bundled Skill (`resources/boost/skills/laravel-cooldown/SKILL.md`)**: We ship a comprehensive, structured Markdown and YAML skill guide right inside the package repository. When an AI agent connects via the Boost MCP server (`php artisan boost:install`), Boost auto-discovers and indexes this skill.
+2. **Auto-Synchronization Hook (`CooldownServiceProvider::autoPublishBoostSkill`)**: When our package boots in console (`php artisan ...`), our service provider checks if Laravel Boost or the `.ai/skills/` directory is present in the host application. If detected, it automatically synchronizes our skill folder directly into `base_path('.ai/skills/laravel-cooldown')` if it hasn't already been published.
+3. **Explicit Composer Metadata (`composer.json` -> `extra.boost.skills`)**: We declare our skill paths inside `composer.json` so external AI tooling and discovery agents can instantly resolve and verify available domain skills without scanning arbitrary directories.
+
+By packaging operational rules, architectural gotchas, and idiomatic API patterns (`->block()`, `HasCooldowns` trait, polymorphic key resolution) directly alongside source code, we ensure that both human developers and their AI assistants write robust, concurrency-safe cooldown patterns from day one.
+
+---
+
 ## Summary for Contributors & Students
 
 By studying this codebase, you will see how modern Laravel 13 packages combine:
-- **Service Providers** (`CooldownServiceProvider`) for dependency container registration and configuration publishing.
+- **Service Providers** (`CooldownServiceProvider`) for dependency container registration, configuration publishing, and auto-discovering AI skills.
 - **Contract-first engineering** (`CooldownDriverContract`, `CooldownManagerContract`) for mockable, highly testable code.
 - **Fluent APIs** (`PendingCooldown`) to provide a delightful, readable developer experience (`Cooldown::for('action', $user)->for(300)`).
 - **Orchestra Testbench 11** (`tests/TestCase.php`) for testing packages against real Laravel container pipelines in memory.

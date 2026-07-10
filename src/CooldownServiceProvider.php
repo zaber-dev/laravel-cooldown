@@ -40,6 +40,12 @@ class CooldownServiceProvider extends ServiceProvider
             $this->publishes([
                 __DIR__ . '/../database/migrations/create_cooldowns_table.php.stub' => $this->getMigrationFileName('create_cooldowns_table.php'),
             ], 'cooldowns-migrations');
+
+            $this->publishes([
+                __DIR__ . '/../resources/boost/skills/laravel-cooldown' => $this->app->basePath('.ai/skills/laravel-cooldown'),
+            ], ['cooldowns-skill', 'cooldowns-boost-skills']);
+
+            $this->autoPublishBoostSkill();
         }
 
         $this->registerMiddleware();
@@ -57,6 +63,26 @@ class CooldownServiceProvider extends ServiceProvider
     }
 
     /**
+     * Automatically publish or synchronize the package AI skill when Laravel Boost is installed.
+     */
+    protected function autoPublishBoostSkill(): void
+    {
+        $boostDetected = class_exists(\Laravel\Boost\BoostServiceProvider::class)
+            || is_dir($this->app->basePath('.ai/skills'));
+
+        if (! $boostDetected) {
+            return;
+        }
+
+        $source = __DIR__ . '/../resources/boost/skills/laravel-cooldown';
+        $destination = $this->app->basePath('.ai/skills/laravel-cooldown');
+
+        if (is_dir($source) && ! is_dir($destination)) {
+            $this->app['files']->copyDirectory($source, $destination);
+        }
+    }
+
+    /**
      * Determine the timestamped migration file name for publishing.
      */
     protected function getMigrationFileName(string $migrationFileName): string
@@ -66,3 +92,4 @@ class CooldownServiceProvider extends ServiceProvider
         return database_path("migrations/{$timestamp}_{$migrationFileName}");
     }
 }
+
