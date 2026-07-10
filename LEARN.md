@@ -116,21 +116,39 @@ public function handle(Request $request, Closure $next, string $action, string $
     $target = $request->user() ?? $request->ip();
     $pending = $manager->for($action, $target);
 
-    // 1. Check & Enforce existing cooldown BEFORE controller execution
-    $pending->enforce(); // Throws CooldownActiveException (HTTP 429) if active
+    // 1. Check & Enforce existing permanent cooldown or active in-flight lock
+    $pending->enforce();
 
-    // 2. Execute controller & process request
-    $response = $next($request);
-
-    // 3. ONLY initiate cooldown if request succeeded or redirected (HTTP 2xx or 3xx)
-    if ($response->isSuccessful() || $response->isRedirection()) {
-        $pending->for($duration);
+    // 2. Acquire a short atomic in-flight reservation to block concurrent double-click bursts
+    if (! $pending->acquireLock(15)) {
+        $pending->enforce('Action is currently being processed. Please wait.');
     }
 
-    return $response;
+    try {
+        $response = $next($request);
+
+        // 3. ONLY initiate permanent cooldown if request succeeded or redirected (HTTP 2xx or 3xx)
+        if ($response->isSuccessful() || $response->isRedirection()) {
+            $pending->for($duration);
+        }
+
+        return $response;
+    } finally {
+        $pending->releaseLock();
+    }
 }
 ```
-If a user submits a form and receives an HTTP `422 Unprocessable Entity` due to a typo in their email address, the cooldown is never initiated. They can immediately fix their mistake and resubmit without waiting for the cooldown timer to expire.
+If a user submits a form and receives an HTTP `422 Unprocessable Entity` due to a typo in their email address, the cooldown is never initiated and the short in-flight reservation is released instantly. They can immediately fix their mistake and resubmit without waiting.
+
+### Architectural Evolution: Check-Lock-Execute-Set via Atomic In-Flight Reservations
+To solve the classic concurrency trade-off between **success-only initiation** (`2xx/3xx` only after execution) and **atomic burst protection** (preventing simultaneous double-click submissions during controller execution), `laravel-cooldown` implements an **Atomic In-Flight Reservation pattern**:
+
+1. **Check (`enforce()`)**: Verify if a permanent cooldown or in-flight reservation is already active.
+2. **Lock (`acquireLock(15)`)**: Atomically acquire a short, temporary in-flight reservation lock across the storage driver (`SETNX` in Cache or database transaction with row locks). If another thread is currently executing inside the controller, `acquireLock` fails and throws `HTTP 429`.
+3. **Execute (`$next($request)`)**: Run the controller inside a `try...finally` block.
+4. **Set (`for($duration)`) & Release (`releaseLock()`)**: If the controller returns a `2xx` or `3xx` response, the permanent temporal cooldown is stored. Regardless of outcome (`2xx`, `4xx validation error`, or `5xx exception`), the `finally` block releases the short in-flight reservation lock (`releaseLock()`).
+
+This dual-layered architecture prevents race conditions between cooldown checks and cooldown creation across supported drivers without locking out users who experience validation or server errors. Developers can also use this exact pattern inside controllers via the fluent `$pending->block(Closure $callback, $duration, $lockSeconds = 15)` API.
 
 ---
 

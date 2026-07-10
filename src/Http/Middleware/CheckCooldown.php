@@ -36,16 +36,25 @@ class CheckCooldown
             $pending->using($driver);
         }
 
-        // If currently on cooldown, enforce throws HTTP 429 CooldownActiveException with Retry-After header
+        // If currently on cooldown or in-flight, enforce throws HTTP 429 CooldownActiveException with Retry-After header
         $pending->enforce();
 
-        $response = $next($request);
-
-        // Initiate the cooldown upon successful response (HTTP 2xx or 3xx redirection)
-        if ($response->isSuccessful() || $response->isRedirection()) {
-            $pending->for($duration);
+        // Acquire a short in-flight lock to prevent concurrent burst requests from double-executing the controller
+        if (! $pending->acquireLock(15)) {
+            $pending->enforce('Action is currently being processed. Please wait.');
         }
 
-        return $response;
+        try {
+            $response = $next($request);
+
+            // Initiate the cooldown upon successful response (HTTP 2xx or 3xx redirection)
+            if ($response->isSuccessful() || $response->isRedirection()) {
+                $pending->for($duration);
+            }
+
+            return $response;
+        } finally {
+            $pending->releaseLock();
+        }
     }
 }

@@ -6,6 +6,7 @@ namespace ZaberDev\Cooldown\Support;
 
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterval;
+use Closure;
 use DateInterval;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Model;
@@ -138,6 +139,18 @@ class PendingCooldown
 
             throw CooldownActiveException::forAction($this->action, $info);
         }
+
+        if ($this->isLocked()) {
+            $lockInfo = new CooldownInfo(
+                key: $this->resolveKey(),
+                expiresAt: CarbonImmutable::now()->addSeconds(3),
+                createdAt: CarbonImmutable::now()
+            );
+
+            $msg = $message ?? "Action [{$this->action}] is currently being processed. Please wait.";
+
+            throw new CooldownActiveException($msg, $lockInfo);
+        }
     }
 
     /**
@@ -187,6 +200,82 @@ class PendingCooldown
         }
 
         return $forgotten;
+    }
+
+    /**
+     * Attempt to acquire an atomic in-flight reservation lock for this action and target.
+     */
+    public function acquireLock(int $seconds = 15): bool
+    {
+        $driver = $this->getDriverInstance();
+        $key = $this->resolveKey();
+
+        if (method_exists($driver, 'acquireLock')) {
+            return $driver->acquireLock($key, $seconds);
+        }
+
+        return false;
+    }
+
+    /**
+     * Release an atomic in-flight reservation lock for this action and target.
+     */
+    public function releaseLock(): bool
+    {
+        $driver = $this->getDriverInstance();
+        $key = $this->resolveKey();
+
+        if (method_exists($driver, 'releaseLock')) {
+            return $driver->releaseLock($key);
+        }
+
+        return false;
+    }
+
+    /**
+     * Determine if an atomic in-flight reservation lock currently exists for this action and target.
+     */
+    public function isLocked(): bool
+    {
+        $driver = $this->getDriverInstance();
+        $key = $this->resolveKey();
+
+        if (method_exists($driver, 'isLocked')) {
+            return $driver->isLocked($key);
+        }
+
+        return false;
+    }
+
+    /**
+     * Execute a callback inside an atomic in-flight reservation, enforcing cooldown before and acquiring lock.
+     * Initiates the cooldown only when the callback completes successfully.
+     *
+     * @template T
+     * @param Closure(): T $callback
+     * @param int|string|DateInterval|DateTimeInterface $duration
+     * @param int $lockSeconds
+     * @return T
+     *
+     * @throws CooldownActiveException
+     */
+    public function block(Closure $callback, int|string|DateInterval|DateTimeInterface $duration = 60, int $lockSeconds = 15): mixed
+    {
+        $this->enforce();
+
+        if (! $this->acquireLock($lockSeconds)) {
+            $this->enforce("Action [{$this->action}] is currently being processed. Please wait.");
+        }
+
+        try {
+            $result = $callback();
+
+            $this->for($duration);
+
+            return $result;
+        } finally {
+            $this->releaseLock();
+        }
     }
 
     /**

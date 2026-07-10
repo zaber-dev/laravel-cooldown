@@ -24,9 +24,17 @@ Manage cooldowns using cache or database storage, attach them directly to Eloque
 ## Quick Example
 
 ```php
-Cooldown::for('password_reset', $user)
-    ->enforce()
-    ->for(300);
+// Option 1: High-level atomic execution (enforces + locks + sets cooldown on success)
+Cooldown::for('send_otp', $user)->block(function () use ($otpService, $user) {
+    $otpService->send($user->phone);
+}, duration: 120);
+
+// Option 2: Step-by-step enforcement
+Cooldown::for('password_reset', $user)->enforce();
+
+// Do work...
+
+Cooldown::for('password_reset', $user)->for(300);
 ```
 ---
 
@@ -43,8 +51,9 @@ Cooldown::for('password_reset', $user)
 
 - **Multiple Storage Drivers** (Cache & Database): Switch seamlessly between high-performance `cache` stores (Redis, Memcached, Array) and persistent `database` storage with automatic cleanup.
 - **Expressive Fluent API**: Chain expressive calls like `Cooldown::for('send_email', $user)->using('database')->for(300)` or enforce limits with `enforce()`.
+- **Atomic In-Flight Locking**: Prevent concurrent double-clicks and race conditions using `block()` or the built-in middleware.
 - **Native Eloquent Integration**: Attach the `HasCooldowns` trait to any model for scoped action tracking (`$user->cooldown('password_reset')->active()`).
-- **Route & Endpoint Middleware**: Protect endpoints automatically using `cooldown:action_name,duration_in_seconds` with automatic HTTP `429` enforcement and `Retry-After` headers.
+- **Route Middleware**: Protect endpoints automatically using `cooldown:action_name,duration_in_seconds` with automatic HTTP `429` enforcement and `Retry-After` headers.
 - **Immutable DTOs**: Work safely with strict `CooldownInfo` Data Transfer Objects returning precision durations (`remainingSeconds()`, `remainingForHumans()`).
 - **Prunable Database Storage**: Built-in `Prunable` trait integration ensures expired database records never clutter your database.
 - **Custom Driver Extensibility**: Register custom storage drivers on the fly with closure-based creators via `Cooldown::extend()`.
@@ -76,6 +85,7 @@ While Laravel includes a built-in `RateLimiter` designed primarily for request t
 | **Fluent Builder API** (`Cooldown::for()->until()`) | ❌ | ❌ | ✅ **Expressive & Clean** |
 | **First-Class Eloquent Integration** (`$user->cooldown()`) | ❌ | ❌ | ✅ **Native (`HasCooldowns`)** |
 | **Driver-Based Architecture** (`cache` & `database`) | ❌ Cache Only | ❌ Manual | ✅ **Both Supported** |
+| **Atomic In-Flight Locking** (`block()`) | ❌ | ⚠️ Manual | ✅ **Built-in** |
 | **Success-Only Middleware Triggering** | ❌ (Triggers on 4xx/5xx) | ❌ | ✅ **Only on 2xx / 3xx** |
 | **Temporal / Time-Based Delays & Constraints** | ⚠️ Limited | ❌ Manual | ✅ **Subsecond Precision** |
 | **Immutable DTOs (`CooldownInfo`)** | ❌ | ❌ | ✅ **Strict (`CarbonImmutable`)** |
@@ -181,11 +191,35 @@ if (Cooldown::for('send_sms', $user)->expired()) {
 ```
 
 #### Enforcing Cooldowns (`enforce`)
-If you want to automatically halt execution and throw an HTTP `429 Too Many Requests` exception when a cooldown is active, call `enforce()`:
+If you want to automatically halt execution and throw an HTTP `429 Too Many Requests` exception when a cooldown is active or currently locked mid-execution, call `enforce()`:
 
 ```php
-// Throws CooldownActiveException (HTTP 429) if active, automatically attaching 'Retry-After' header
+// Throws CooldownActiveException (HTTP 429) if active or mid-flight, automatically attaching 'Retry-After' header
 Cooldown::for('login_attempt', $user)->enforce();
+```
+
+#### Atomic Block Execution (`block`)
+For operations vulnerable to concurrent double-click bursts (e.g., sending SMS or OTPs), use the `block()` helper. `block()` acquires a temporary atomic lock while the callback executes and only starts the cooldown if execution completes successfully:
+
+```php
+Cooldown::for('send_otp', $user)->block(function () use ($otpService, $user) {
+    $otpService->send($user->phone);
+}, duration: 120);
+```
+
+#### Advanced: Manual In-Flight Locking (`acquireLock`, `releaseLock`, `isLocked`)
+> We strongly recommend using `block()` for most use cases unless your workflow requires fine-grained manual locking across multi-step or asynchronous execution paths.
+
+```php
+if (! Cooldown::for('process_payment', $order)->acquireLock(10)) {
+    throw new \Exception('Payment processing is already mid-flight.');
+}
+
+try {
+    // Perform payment charge...
+} finally {
+    Cooldown::for('process_payment', $order)->releaseLock();
+}
 ```
 
 #### Resetting / Clearing Cooldowns
@@ -247,7 +281,7 @@ $user->cooldowns()->delete();
 
 ---
 
-### 3. Route & Endpoint Middleware
+### 3. Route Middleware
 
 Protect routes declaratively without writing boilerplate checks in your controllers using the `CheckCooldown` middleware:
 
@@ -264,9 +298,10 @@ Route::post('/api/reports/generate', [ReportController::class, 'generate'])
 ```
 
 **How the Middleware Works:**
-1. Before executing the controller, the middleware checks `Cooldown::for('action', $request->user() ?? $request->ip())`.
-2. If active, it throws `CooldownActiveException` with HTTP `429` and a valid `Retry-After` header.
-3. If not active, the controller executes. If the response is successful (`2xx` or `3xx`), the cooldown is automatically initiated for the specified duration. If the controller fails (`4xx`/`5xx`), the cooldown is **not** applied so the user can correct their input and retry.
+- Before executing your controller, `CheckCooldown` verifies active status and acquires a temporary atomic in-flight lock across your configured driver to block concurrent double-click bursts (`HTTP 429`).
+- When your controller completes successfully (`2xx` or `3xx`), the permanent temporal cooldown is initiated (`for()`). If the controller fails due to validation (`4xx`) or server errors (`5xx`), the temporary lock is released without applying a cooldown so the user can immediately correct their input and retry.
+
+> For an architectural deep dive into check-lock-execute-set mechanics and driver internals, see [LEARN.md](LEARN.md).
 
 ---
 

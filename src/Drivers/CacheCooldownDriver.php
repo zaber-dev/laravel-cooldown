@@ -102,6 +102,36 @@ class CacheCooldownDriver implements CooldownDriverContract
     }
 
     /**
+     * Attempt to acquire an atomic in-flight reservation lock for the given key.
+     */
+    public function acquireLock(string $key, int $seconds = 15): bool
+    {
+        if ($seconds <= 0) {
+            $this->releaseLock($key);
+
+            return false;
+        }
+
+        return $this->cache->add($this->formatKey('lock:' . $key), true, $seconds);
+    }
+
+    /**
+     * Release an atomic in-flight reservation lock for the given key.
+     */
+    public function releaseLock(string $key): bool
+    {
+        return $this->cache->forget($this->formatKey('lock:' . $key));
+    }
+
+    /**
+     * Determine if an atomic in-flight reservation lock currently exists for the given key.
+     */
+    public function isLocked(string $key): bool
+    {
+        return $this->cache->has($this->formatKey('lock:' . $key));
+    }
+
+    /**
      * Format the raw storage key with the driver prefix.
      */
     protected function formatKey(string $key): string

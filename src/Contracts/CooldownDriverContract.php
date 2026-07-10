@@ -34,4 +34,19 @@ interface CooldownDriverContract
      * Remove all cooldowns from storage, optionally filtered by a prefix.
      */
     public function flush(?string $prefix = null): int;
+
+    /**
+     * Attempt to acquire an atomic in-flight reservation lock for the given key.
+     */
+    public function acquireLock(string $key, int $seconds = 15): bool;
+
+    /**
+     * Release an atomic in-flight reservation lock for the given key.
+     */
+    public function releaseLock(string $key): bool;
+
+    /**
+     * Determine if an atomic in-flight reservation lock currently exists for the given key.
+     */
+    public function isLocked(string $key): bool;
 }
