@@ -12,11 +12,12 @@
 
 **Supports:** Laravel 11, 12 & 13+ • PHP 8.2+ • Redis • Memcached • Database
 
-Laravel Cooldown is a driver-based cooldown management package for Laravel that helps you enforce time-based restrictions on actions, workflows, and endpoints.
+**Application-level action cooldown management for Laravel.**
+Enforce action cooldowns on actions, workflows, and endpoints using cache or database storage.
 
-Manage cooldowns using cache or database storage, attach them directly to Eloquent models, protect routes with middleware, and extend the package with custom storage drivers—all through a clean, expressive API.
+Manage cooldowns with a clean, expressive API using cache or persistent database storage, attach them directly to Eloquent models, protect routes with declarative middleware, and extend the package with custom storage backends.
 
-> Unlike Laravel's built-in `RateLimiter`, Laravel Cooldown is designed for persistent, entity-scoped action cooldowns and workflow delays with interchangeable cache and database storage.
+> Unlike Laravel's built-in `RateLimiter`, Laravel Cooldown is designed for persistent, entity-scoped action cooldowns and workflow cooldowns with interchangeable cache and database storage.
 
 ---
 
@@ -24,17 +25,11 @@ Manage cooldowns using cache or database storage, attach them directly to Eloque
 ## Quick Example
 
 ```php
-// Option 1: High-level atomic execution (enforces + locks + sets cooldown on success)
-Cooldown::for('send_otp', $user)->block(function () use ($otpService, $user) {
-    $otpService->send($user->phone);
-}, duration: 120);
+Cooldown::for('password_reset', $user)
+    ->for(300);
 
-// Option 2: Step-by-step enforcement
-Cooldown::for('password_reset', $user)->enforce();
-
-// Do work...
-
-Cooldown::for('password_reset', $user)->for(300);
+Cooldown::for('password_reset', $user)
+    ->enforce();
 ```
 ---
 
@@ -67,20 +62,31 @@ Laravel Cooldown is ideal for:
 
 ## Features
 
-- **Multiple Storage Drivers** (Cache & Database): Switch seamlessly between high-performance `cache` stores (Redis, Memcached, Array) and persistent `database` storage with automatic cleanup.
-- **Expressive Fluent API**: Chain expressive calls like `Cooldown::for('send_email', $user)->using('database')->for(300)` or enforce limits with `enforce()`.
-- **Atomic In-Flight Locking**: Prevent concurrent double-clicks and race conditions using `block()` or the built-in middleware.
-- **Native Eloquent Integration**: Attach the `HasCooldowns` trait to any model for scoped action tracking (`$user->cooldown('password_reset')->active()`).
-- **Route Middleware**: Protect endpoints automatically using `cooldown:action_name,duration_in_seconds` with automatic HTTP `429` enforcement and `Retry-After` headers.
-- **Immutable DTOs**: Work safely with strict `CooldownInfo` Data Transfer Objects returning precision durations (`remainingSeconds()`, `remainingForHumans()`).
-- **Prunable Database Storage**: Built-in `Prunable` trait integration ensures expired database records never clutter your database.
-- **Custom Driver Extensibility**: Register custom storage drivers on the fly with closure-based creators via `Cooldown::extend()`.
+- **Time-based action cooldowns** ⭐: Enforce action cooldowns on actions, workflows, and endpoints.
+- **Atomic execution** ⭐: Prevent concurrent double-clicks and race conditions using `block()` or the built-in middleware.
+- **Expressive API**: Chain expressive calls like `Cooldown::for('send_email', $user)->using('database')->for(300)` or enforce limits with `enforce()`.
+- **Eloquent integration**: Attach the `HasCooldowns` trait to any model for scoped action tracking (`$user->cooldown('password_reset')->active()`).
+- **Middleware**: Protect endpoints automatically using `cooldown:action_name,duration_in_seconds` with automatic HTTP `429` enforcement and `Retry-After` headers.
+- **Storage backends**: Switch seamlessly between high-performance `cache` stores (Redis, Memcached, Array) and persistent `database` storage with automatic cleanup.
+- **DTOs**: Work safely with strict `CooldownInfo` Data Transfer Objects returning precision durations (`remainingSeconds()`, `remainingForHumans()`).
+- **Extensibility**: Register custom storage backends on the fly with closure-based creators via `Cooldown::extend()`.
+- **Prunable storage**: Built-in `Prunable` trait integration ensures expired database records never clutter your database.
 
 ---
 
-## Why Laravel Cooldown?
+## Why not RateLimiter?
 
-While Laravel includes a built-in `RateLimiter` designed primarily for request throttling (e.g., "60 requests per minute"), **Laravel Cooldown** is engineered for temporal action constraints, workflow delays, and entity-scoped cooldowns across multiple storage backends.
+Laravel's RateLimiter is excellent for protecting endpoints from bursts of traffic.
+
+Laravel Cooldown solves a different problem.
+
+* Password reset
+* Email verification
+* OTP delivery
+* Payment retries
+* Report exports
+* AI generation
+* Workflow delays
 
 | Feature | Laravel RateLimiter | Custom Cache Checks | Laravel Cooldown |
 | :--- | :---: | :---: | :---: |
@@ -128,7 +134,7 @@ The configuration file `config/cooldowns.php` allows you to define your default 
 return [
     /*
     |--------------------------------------------------------------------------
-    | Default Cooldown Driver
+    | Default Storage Backend
     |--------------------------------------------------------------------------
     |
     | Supported drivers: "cache", "database"
@@ -307,9 +313,9 @@ Route::post('/api/reports/generate', [ReportController::class, 'generate'])
 
 ---
 
-### 4. Working with Drivers (`using` & `driver`)
+### 4. Working with Storage Backends (`using` & `driver`)
 
-By default, the package uses the driver defined in `config/cooldowns.php`. You can switch drivers on the fly per request or action:
+By default, the package uses the storage backend configured in `config/cooldowns.php`. You can switch storage backends on the fly per request or action:
 
 ```php
 // Store transient rate checks in fast cache/Redis
@@ -323,8 +329,8 @@ $cacheDriver = Cooldown::driver('cache');
 $cacheDriver->put('custom_key', 180);
 ```
 
-#### Registering Custom Drivers
-You can extend the `CooldownManager` with your own storage drivers (e.g., DynamoDB, MongoDB) in your `AppServiceProvider`:
+#### Registering Custom Storage Backends
+You can extend the `CooldownManager` with your own storage backends (e.g., DynamoDB, MongoDB) in your `AppServiceProvider`:
 
 ```php
 use ZaberDev\Cooldown\Contracts\CooldownDriverContract;

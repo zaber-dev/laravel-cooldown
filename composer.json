@@ -1,19 +1,19 @@
 {
     "name": "zaber-dev/laravel-cooldown",
-    "description": "Driver-based cooldown management for Laravel with cache and database drivers, Eloquent integration, middleware, and a fluent API.",
+    "description": "Application-level action cooldown management for Laravel with cache and database storage, Eloquent integration, middleware, and a fluent API.",
     "keywords": [
         "laravel",
         "laravel-package",
         "cooldown",
-        "rate-limit",
-        "rate-limiting",
-        "throttle",
-        "throttling",
+        "action-cooldown",
+        "workflow",
         "middleware",
         "eloquent",
         "cache",
         "database",
-        "redis"
+        "redis",
+        "concurrency",
+        "timing"
     ],
     "homepage": "https://github.com/zaber-dev/laravel-cooldown",
     "license": "MIT",

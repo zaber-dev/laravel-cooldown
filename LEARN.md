@@ -6,17 +6,17 @@ Welcome to the architectural learning guide for **Laravel Cooldown** (`zaber-dev
 
 ## 1. Core Architectural Goals
 
-When building **Laravel Cooldown**, we aimed to solve several historical problems with temporal action throttling and rate limiting:
+When building **Laravel Cooldown**, we aimed to solve several historical problems with application-level action cooldown management:
 1. **Coupling to a Single Storage Engine**: Many packages hardcode `Cache::put()` or `DB::table()`, forcing developers to use either volatile memory or high-latency database operations exclusively.
-2. **Loss of Precision in Time Math**: Floating-point subsecond discrepancies can cause rate-limit checks to expire prematurely or report inaccurate "remaining seconds" in API headers.
-3. **Inconsistent Polymorphic Target Scoping**: Rate limiting a User (`App\Models\User:12`) vs an IP Address (`192.168.1.1`) vs an API Token usually requires disparate key formatting logic across application layers.
+2. **Reliable Cooldown Expiration**: Floating-point subsecond discrepancies can cause rate-limit checks to expire prematurely or report inaccurate "remaining seconds" in API headers.
+3. **Inconsistent Polymorphic Target Scoping**: Applying a cooldown to a User (`App\Models\User:12`) vs an IP Address (`192.168.1.1`) vs an API Token usually requires disparate key formatting logic across application layers.
 4. **Endpoint Middleware Gotchas**: Traditional rate-limiting middleware triggers the cooldown *before* the controller executes. If the controller throws a validation error or fails (`HTTP 400/500`), the user is unfairly locked out while trying to correct their input.
 
 Let's explore how our architecture solves each of these challenges cleanly.
 
 ---
 
-## 2. The Driver-Based Manager Pattern (`Illuminate\Support\Manager`)
+## 2. The Storage Backend Manager Pattern (`Illuminate\Support\Manager`)
 
 At the heart of the package is the `CooldownManager`, extending `Illuminate\Support\Manager` and implementing `CooldownManagerContract`.
 
@@ -44,7 +44,7 @@ At the heart of the package is the `CooldownManager`, extending `Illuminate\Supp
 ### Why a Manager?
 By leveraging Laravel's `Manager` class, we decouple the API surface (`Cooldown::for()`) from the storage implementation (`CacheCooldownDriver` / `DatabaseCooldownDriver`).
 - **Zero Overhead Resolution**: Drivers are lazily instantiated and cached (`$this->drivers[$name]`).
-- **Runtime Swapping**: Developers can call `->using('database')` for critical financial transactions and `->using('cache')` for high-throughput API checks within the exact same request lifecycle.
+- **Runtime Swapping**: Developers can switch storage backends per action using `->using('database')` for critical financial transactions and `->using('cache')` for high-throughput API checks within the exact same request lifecycle.
 - **Strict Interface Contracts**: Every driver strictly adheres to `CooldownDriverContract`, ensuring input/output parity across storage mediums.
 
 ---
@@ -99,9 +99,8 @@ final class CooldownInfo
 }
 ```
 
-### Why `CarbonImmutable` & `ceil(floatDiffInSeconds)`?
-1. **Immutability**: `CarbonImmutable` guarantees that downstream controllers or event listeners cannot accidentally alter the expiration timestamp when performing date comparisons (`$expiresAt->addDays(1)` returns a new instance, leaving the DTO intact).
-2. **Subsecond Precision**: If a 120-second cooldown is set and checked 5 milliseconds later, standard integer `diffInSeconds()` truncates `119.995s` down to `119s`. By computing `ceil(floatDiffInSeconds())`, our API accurately reports `120` remaining seconds immediately after creation, preventing off-by-one errors in HTTP `Retry-After` headers.
+### Why `CarbonImmutable`?
+`CarbonImmutable` ensures expiration timestamps remain immutable while the DTO provides consistent remaining-time calculations for API responses and Retry-After headers.
 
 ---
 
@@ -140,7 +139,7 @@ public function handle(Request $request, Closure $next, string $action, string $
 ```
 If a user submits a form and receives an HTTP `422 Unprocessable Entity` due to a typo in their email address, the cooldown is never initiated and the short in-flight reservation is released instantly. They can immediately fix their mistake and resubmit without waiting.
 
-### Architectural Evolution: Check-Lock-Execute-Set via Atomic In-Flight Reservations
+### Architectural Evolution: Check → Lock → Execute → Start Cooldown
 To solve the classic concurrency trade-off between **success-only initiation** (`2xx/3xx` only after execution) and **atomic burst protection** (preventing simultaneous double-click submissions during controller execution), `laravel-cooldown` implements an **Atomic In-Flight Reservation pattern**:
 
 1. **Check (`enforce()`)**: Verify if a permanent cooldown or in-flight reservation is already active.
@@ -186,10 +185,13 @@ By packaging operational rules, architectural gotchas, and idiomatic API pattern
 
 ## Summary for Contributors & Students
 
-By studying this codebase, you will see how modern Laravel 13 packages combine:
-- **Service Providers** (`CooldownServiceProvider`) for dependency container registration, configuration publishing, and auto-discovering AI skills.
-- **Contract-first engineering** (`CooldownDriverContract`, `CooldownManagerContract`) for mockable, highly testable code.
-- **Fluent APIs** (`PendingCooldown`) to provide a delightful, readable developer experience (`Cooldown::for('action', $user)->for(300)`).
-- **Orchestra Testbench 11** (`tests/TestCase.php`) for testing packages against real Laravel container pipelines in memory.
+By studying this package, you'll explore modern Laravel package development patterns, including:
+- **Service Providers**
+- **Manager Pattern**
+- **Contract-first architecture**
+- **Fluent Builders**
+- **Immutable DTOs**
+- **Orchestra Testbench**
+- **AI-ready package design**
 
 We invite you to explore the `src/` directory and see these patterns in action!
